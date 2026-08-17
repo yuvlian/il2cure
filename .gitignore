@@ -1,0 +1,13 @@
+refs/
+*.exe
+*.dll
+*.obj
+*.pdb
+*.py
+tracker.odin
+*.cs
+*_test.odin
+build/
+*.exp
+*.lib
+.examples/symphytum/
