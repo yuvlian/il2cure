@@ -160,3 +160,11 @@ api :: proc (name: string, resolver: Api_Resolver = nil) -> rawptr {
 	api_cache[name] = p
 	return p
 }
+
+// frees the export caches. called by il2cpp.shutdown
+@(private)
+api_shutdown :: proc () {
+	delete(api_cache)
+	delete(api_skip)
+	game_assembly = {}
+}

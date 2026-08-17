@@ -57,6 +57,7 @@ method_has_attribute :: proc (m: Method_Info, attr: il2cpp.Il2CppClass) -> bool 
 	return il2cpp.vm_il2cpp_method_has_attribute(il2cpp.Il2CppMethod(m), attr)
 }
 
+// caller must delete the returned slice
 method_parameters :: proc (m: Method_Info, allocator := context.allocator) -> []Parameter_Info {
 	n := method_param_count(m)
 	out := make([]Parameter_Info, n, allocator)

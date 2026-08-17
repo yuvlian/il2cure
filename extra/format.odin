@@ -5,6 +5,7 @@ import "../il2cpp"
 import "../reflection"
 
 // "Namespace.Type" (or just "Type" when global)
+// caller must delete the returned string
 class_full_name :: proc (class: il2cpp.Il2CppClass, allocator := context.allocator) -> string {
 	ns := il2cpp.class_namespace(class)
 	name := il2cpp.class_name(class)
@@ -188,6 +189,7 @@ method_kind_suffix :: proc (method: il2cpp.Il2CppMethod) -> string {
 
 // renders "("type, type")" from a method's declared params (by the raw
 // type name only)
+// caller must delete the returned string
 method_param_list :: proc (
 	method:      il2cpp.Il2CppMethod,
 	count:       u32,

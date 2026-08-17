@@ -31,6 +31,7 @@ image_class :: proc (image: il2cpp.Il2CppImage, i: uintptr) -> il2cpp.Il2CppClas
 }
 
 // enumerates every assembly in the runtime domain. returns (assemblies, count)
+// caller must delete the returned slice
 domain_assemblies :: proc (
 	allocator := context.allocator,
 ) -> ([]il2cpp.Il2CppAssembly, uintptr) {
@@ -51,6 +52,7 @@ domain_assemblies :: proc (
 }
 
 // lists every class in an image
+// caller must delete the returned slice
 assembly_classes :: proc (
 	image:       il2cpp.Il2CppImage,
 	allocator := context.allocator,

@@ -43,6 +43,7 @@ class_is_valuetype :: proc (class: il2cpp.Il2CppClass) -> bool {
 
 // class_base_types returns the inheritance chain class, its parent,
 // ... up to (not including) System.Object
+// caller must delete the returned slice
 class_base_types :: proc (
 	class: il2cpp.Il2CppClass,
 	allocator := context.allocator,
@@ -55,6 +56,7 @@ class_base_types :: proc (
 }
 
 // returns the interfaces class implements
+// caller must delete the returned slice
 class_interfaces :: proc (
 	class: il2cpp.Il2CppClass,
 	allocator := context.allocator,
@@ -71,6 +73,7 @@ class_interfaces :: proc (
 	return its[:]
 }
 
+// caller must delete the returned slice
 class_all_fields :: proc (class: il2cpp.Il2CppClass, allocator := context.allocator) -> []Field_Info {
 	out := make([dynamic]Field_Info, allocator)
 	iter: rawptr
@@ -84,6 +87,7 @@ class_all_fields :: proc (class: il2cpp.Il2CppClass, allocator := context.alloca
 	return out[:]
 }
 
+// caller must delete the returned slice
 class_all_methods :: proc (class: il2cpp.Il2CppClass, allocator := context.allocator) -> []Method_Info {
 	out := make([dynamic]Method_Info, allocator)
 	iter: rawptr
@@ -97,6 +101,7 @@ class_all_methods :: proc (class: il2cpp.Il2CppClass, allocator := context.alloc
 	return out[:]
 }
 
+// caller must delete the returned slice
 class_all_properties :: proc (class: il2cpp.Il2CppClass, allocator := context.allocator) -> []Property_Info {
 	out := make([dynamic]Property_Info, allocator)
 	iter: rawptr

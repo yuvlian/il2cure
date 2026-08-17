@@ -1,7 +1,9 @@
 package il2cpp
 
 // resolve fetches a typed proc from the api cache.
-// returns a nil proc (and the caller's call is a no-op) if the export is missing.
+// returns a nil proc if the export is missing.
+// calling a nil proc crashes, so only call vm_*
+// after GameAssembly.dll is mapped (or il2cpp.init ran)
 resolve :: proc ($T: typeid, name: string) -> T {
 	p := api(name)
 	if p == nil {

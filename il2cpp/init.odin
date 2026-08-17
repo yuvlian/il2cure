@@ -1,11 +1,13 @@
 package il2cpp
 
+import "core:mem"
 import "core:strings"
 
 Table :: struct {
 	classes:    map[string]Il2CppClass,   // "Namespace.Type"
 	methods:    map[string]Il2CppMethod,  // "Namespace.Type::MethodName"
 	assemblies: [dynamic]Il2CppAssembly,
+	allocator:  mem.Allocator,
 }
 
 @(private)
@@ -34,6 +36,7 @@ init :: proc (resolver := default_export_resolver) -> bool {
 	vm_il2cpp_thread_attach(domain)
 
 	table := new(Table)
+	table.allocator = context.allocator
 
 	count: uintptr
 	asms := vm_il2cpp_domain_get_assemblies(domain, &count)
@@ -86,6 +89,7 @@ init :: proc (resolver := default_export_resolver) -> bool {
 }
 
 // "Namespace.Type"
+// caller must delete the returned string
 build_full_name :: proc (ns, name: string, allocator := context.allocator) -> string {
 	if ns == "" {
 		return strings.clone(name, allocator)
@@ -268,12 +272,12 @@ method_name_of :: proc (full_name: string) -> string {
 }
 
 shutdown :: proc () {
-	if state == nil {
-		return
+	if state != nil {
+		delete(state.classes)
+		delete(state.methods)
+		delete(state.assemblies)
+		free(state, state.allocator)
+		state = nil
 	}
-	delete(state.classes)
-	delete(state.methods)
-	delete(state.assemblies)
-	free(state)
-	state = nil
+	api_shutdown()
 }

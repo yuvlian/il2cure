@@ -243,6 +243,7 @@ cov_il2cpp_model :: proc () {
 	if s := il2cpp.string_new_utf16("hello il2cure"); s != 0 { // make a managed utf16 string
 		if utf8, uok := il2cpp.string_to_utf8(s); uok { // back to a normal odin string
 			log.infof("[coverage] string: %q", utf8) // log round-trip result
+			delete(utf8)                             // we own those bytes
 		}
 	}
 	_ = il2cpp.string_new("sample") // utf8 -> managed string (same idea)
@@ -361,6 +362,7 @@ cov_reflection_surface :: proc (
 ) {
 	// domain / assembly / image walk.
 	assemblies, _ := reflection.domain_assemblies() // every loaded assembly
+	defer delete(assemblies)                        // we own the slice
 	for a in assemblies {
 		// wrap the raw handle so the image helpers below accept it
 		img := reflection.assembly_image(reflection.Assembly_Info{handle = a}) // handle -> image
@@ -379,15 +381,23 @@ cov_reflection_surface :: proc (
 	_ = reflection.class_is_interface(class)  // interface?
 	_ = reflection.class_is_abstract(class)   // abstract?
 	_ = reflection.class_is_valuetype(class)  // struct vs class?
-	_ = reflection.class_base_types(class)    // base class + interfaces
-	_ = reflection.class_interfaces(class)    // just the interfaces
-	_ = reflection.class_all_fields(class)    // all fields (incl. inherited)
-	_ = reflection.class_all_methods(class)   // all methods (incl. inherited)
-	_ = reflection.class_all_properties(class) // all properties
-	_ = reflection.class_members(class)       // every member, unified
+	base_types := reflection.class_base_types(class) // base class + interfaces
+	interfaces := reflection.class_interfaces(class) // just the interfaces
+	defer delete(base_types)
+	defer delete(interfaces)
+	_ = base_types
+	_ = interfaces
+	fields := reflection.class_all_fields(class)      // all fields (incl. inherited)
+	methods := reflection.class_all_methods(class)    // all methods (incl. inherited)
+	props := reflection.class_all_properties(class)   // all properties
+	members := reflection.class_members(class)        // every member, unified
+	defer delete(fields)
+	defer delete(methods)
+	defer delete(props)
+	defer delete(members)
 
 	// fields.
-	for f in reflection.class_all_fields(class) {
+	for f in fields {
 		_ = reflection.field_name(f)           // field name
 		_ = reflection.field_type(f)           // field type
 		_ = reflection.field_declaring_class(f) // where it's declared
@@ -415,7 +425,9 @@ cov_reflection_surface :: proc (
 	_ = reflection.method_is_virtual(mi)     // virtual?
 	_ = reflection.method_is_abstract(mi)    // abstract?
 	_ = reflection.method_has_attribute(mi, 0) // has a specific attribute flag?
-	for p in reflection.method_parameters(mi) {
+	params := reflection.method_parameters(mi)
+	defer delete(params)
+	for p in params {
 		_ = reflection.parameter_type(p)    // param's type
 		_ = reflection.parameter_name(p)    // param's name
 		_ = reflection.parameter_is_byref(p) // out/ref?
@@ -428,7 +440,7 @@ cov_reflection_surface :: proc (
 	_ = reflection.method_visible(m, reflection.Binding_Flags_Default) // visibility check
 
 	// properties.
-	for prop in reflection.class_all_properties(class) {
+	for prop in props {
 		_ = reflection.property_name(prop)        // property name
 		_ = reflection.property_get_method(prop)  // the getter
 		_ = reflection.property_set_method(prop)  // the setter
@@ -440,7 +452,7 @@ cov_reflection_surface :: proc (
 	}
 
 	// member-info generic accessors.
-	for mem in reflection.class_members(class) {
+	for mem in members {
 		_ = reflection.member_name(mem)           // member name
 		_ = reflection.member_declaring_class(mem) // where it's declared
 		_ = reflection.member_is_static(mem)      // static?
@@ -456,14 +468,15 @@ cov_reflection_surface :: proc (
 	if reflection.enum_is_enum(class) {         // is our class an enum?
 		_, _ = reflection.enum_underlying_type(class) // the enum's backing type
 		_ = reflection.enum_underlying_name(class)    // its il name
-		_ = reflection.enum_fields(class)             // the enum's values
+		enum_vals := reflection.enum_fields(class)    // the enum's values
+		delete(enum_vals)                             // we own the slice
 	}
 
 	// reflection overload-resolution helpers. param_type_name gives u the
 	// IL type name of a single param without building the whole param list,
 	// and find_method_specific_on searches a runtime type for a named
 	// method (handy when u only have a System.Type, not a class handle).
-	_ = reflection.param_type_name(m, 0)             // il type name of param 0
+	_ = reflection.param_type_name(m, 0) // il type name of param 0 (managed view)
 	rt := reflection.runtime_type_of_class(class)    // the System.Type for a class
 	_, _ = reflection.find_method_specific_on(rt, "Nope") // find a method on that type
 }
@@ -507,13 +520,15 @@ cov_detour :: proc "c" () {
 // empty instead of crashing.
 cov_pure_extra :: proc () {
 	// metadata names on a 0 class: empty, not a fault.
-	_ = extra.class_full_name(0)     // "Namespace.Class"
+	cfn := extra.class_full_name(0)  // "Namespace.Class"
+	delete(cfn)                      // we own those bytes
 	_ = extra.class_kind_suffix(0)   // " (generic)"/" (inflated)" for classes
 	_ = extra.method_kind_suffix(0)  // same idea but for methods
 
 	// format renderers (pure string builders).
 	_ = extra.type_format_name(0, true)      // C#-ish type name
-	_ = extra.method_param_list(0, 0)        // "int, string" param list
+	mpl := extra.method_param_list(0, 0) // "int, string" param list
+	defer delete(mpl)
 	// access/modifier renderers: c#-style "public"/"static"/etc strings,
 	// built off the raw attribute bitflags from reflection
 	_ = extra.field_access(reflection.Field_Attributes_Public)      // "public" etc
@@ -529,6 +544,7 @@ cov_pure_extra :: proc () {
 	// internally it just appends a word with spacing handled for u
 	b := strings.Builder{}
 	extra.write_word(&b, "hello") // append "hello " (token + space)
+	strings.builder_destroy(&b)   // free the builder buffer
 }
 
 // scan is the pe/module-walking layer used to find signatures and resolve

@@ -23,7 +23,8 @@ object_box :: proc (class: Il2CppClass, value: $T) -> Il2CppObject {
 	return vm_il2cpp_value_box(class, &value)
 }
 
-// il2cpp managed string -> utf8, true = ok
+// il2cpp managed string -> utf8, true = ok.
+// caller must delete the returned string
 string_to_utf8 :: proc (s: Il2CppString, allocator := context.allocator) -> (string, bool) {
 	if s == 0 {
 		return "", false

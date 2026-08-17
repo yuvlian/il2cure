@@ -30,6 +30,7 @@ enum_underlying_name :: proc (class: il2cpp.Il2CppClass) -> string {
 
 // lists the enum's constant fields (literal instance fields).
 // returns nil if not enum
+// caller must delete the returned slice
 enum_fields :: proc (class: il2cpp.Il2CppClass, allocator := context.allocator) -> []Field_Info {
 	if !enum_is_enum(class) {
 		return nil

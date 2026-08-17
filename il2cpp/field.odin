@@ -64,7 +64,8 @@ field_write_object :: proc (
 	vm_il2cpp_field_set_value_object(class, obj, field, value)
 }
 
-// decodes a string-typed field to utf8
+// decodes a string-typed field to utf8.
+// caller must delete the returned string (it was allocated from allocator).
 field_read_string :: proc (
 	obj:        Il2CppObject,
 	field:      Il2CppField,

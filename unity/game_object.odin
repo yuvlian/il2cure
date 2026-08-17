@@ -237,6 +237,7 @@ game_object_new :: proc (name: string) -> (GameObject, bool) {
 	return obj, ok
 }
 
+// caller must delete the returned string
 game_object_get_full_path :: proc (go: GameObject) -> string {
 	parts := [dynamic]string{}
 	defer delete(parts)
@@ -304,6 +305,7 @@ game_object_find_active_character :: proc (path: string) -> (GameObject, bool) {
 	return GameObject(0), false
 }
 
+// caller must delete the returned string
 game_object_get_component_names :: proc (go: GameObject) -> string {
 	class, _ := il2cpp.find_class("UnityEngine.Component")
 	if class == 0 {

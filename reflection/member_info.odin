@@ -61,6 +61,7 @@ member_metadata_token :: proc (m: Member_Info) -> u32 {
 
 // enumerates every field/method/property of class as Member_Infos
 // order: field, method, property.
+// caller must delete the returned slice
 class_members :: proc (class: il2cpp.Il2CppClass, allocator := context.allocator) -> []Member_Info {
 	ms := make([dynamic]Member_Info, allocator)
 
