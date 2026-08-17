@@ -47,6 +47,8 @@ all this dll does is just set timescale to 0.2 once
 
 - `coverage/`: a fake mod that tries to use everything in the project. i recommend reading the source code, but this might help for the first read.
 
+- https://github.com/yuvlian/symphytum
+
 ## packages
 
 | package      | what it does |
