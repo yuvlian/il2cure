@@ -41,3 +41,26 @@ patch_byte :: proc(body: [^]u8, off: uint, value: u8) -> bool {
 	_ = windows.VirtualProtect(p, 1, old, &old)
 	return FlushInstructionCache(windows.GetCurrentProcess(), p, 1) == windows.TRUE
 }
+
+// patch_call rewrites the rel32 of an existing `E8 call rel32` at site to
+// point at detour (disabling the original callee when detour is a stub).
+// Returns false when site is not a call or detour is out of rel32 range.
+patch_call :: proc(site: uintptr, detour: rawptr) -> bool {
+	op := (cast(^u8)(site))^
+	if op != 0xE8 {
+		return false
+	}
+	dist := int(uintptr(detour)) - int(site + 5)
+	if dist < int(min(i32)) || dist > int(max(i32)) {
+		return false
+	}
+
+	p := rawptr(site + 1)
+	old: windows.DWORD
+	if !windows.VirtualProtect(p, 4, windows.PAGE_EXECUTE_READWRITE, &old) {
+		return false
+	}
+	(cast(^i32)(site + 1))^ = i32(dist)
+	_ = windows.VirtualProtect(p, 4, old, &old)
+	return FlushInstructionCache(windows.GetCurrentProcess(), p, 4) == windows.TRUE
+}
