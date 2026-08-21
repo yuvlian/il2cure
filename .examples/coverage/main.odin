@@ -62,32 +62,15 @@ main :: proc () {
 }
 
 mod_thread :: proc () {
-	// odin's builtin logger stuff
-	console_logger := log.create_console_logger()       // u can modify this further i believe, i just dont care.
-	defer log.destroy_console_logger(console_logger)    // free it when this proc exits
+	// create odin loggers
+	// you can omit file name if you dont want file logging
+	loggers := console.create_loggers("coverage.log")
+	defer console.destroy_loggers(loggers)
 
-	// we always have the console logger; the file logger is the optional one
-	logger := console_logger
-	file_logger: log.Logger                            // zero-value until we open the file below
-	multi_logger := false                              // did we manage to create the file logger?
-
-	// try to open/create coverage.log next to our dll
-	f, ferr := os.open("coverage.log", {.Write, .Append, .Create})
-	if ferr == nil {                                   // file opened ok
-		file_logger = log.create_file_logger(f)        // wrap the file handle in a logger
-		logger = log.create_multi_logger(console_logger, file_logger) // one call -> console AND file
-		multi_logger = true
-	}
-
-	// "defer if <cond>" only cleans up what we actually created above.
-	// if the file logger never got made we skip this, since destroying a
-	// logger that was never created would just be trouble
-	defer if multi_logger {
-		log.destroy_file_logger(file_logger) // free the file logger
-		log.destroy_multi_logger(logger)     // free the chained logger
-	}
-
-	context.logger = logger // every log.* call below now uses console + file
+	// this will automatically choose multi logger (file + console)
+	// if it succeed in creating it,
+	// otherwise will just choose console logger only
+	context.logger = console.choose_logger(loggers)
 
 	// init console with ur custom title!
 	if err := console.init("my_console"); err != nil {

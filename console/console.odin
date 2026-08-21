@@ -1,5 +1,6 @@
 package console
 
+import "core:log"
 import "core:os"
 import "core:sys/windows"
 
@@ -62,4 +63,46 @@ uninit :: proc () {
 
 	windows.FreeConsole()
 	console_initted = false
+}
+
+// dont pass log_file if dont want file logging.
+// returns [console logger, file logger, multi_logger]
+create_loggers :: proc (log_file := "") -> [3]Maybe(log.Logger) {
+	console_logger := log.create_console_logger()
+	file_logger: Maybe(log.Logger)
+	multi_logger: Maybe(log.Logger)
+
+	if log_file != "" {
+		if f, ferr := os.open(log_file, {.Write, .Append, .Create}); ferr == nil {
+			file_logger = log.create_file_logger(f)
+			multi_logger = log.create_multi_logger(console_logger, file_logger.?)
+		}
+	}
+
+	return {console_logger, file_logger, multi_logger}
+}
+
+destroy_loggers :: proc (loggers: [3]Maybe(log.Logger)) {
+	#reverse for l, i in loggers {
+		if logger, ok := l.?; ok {
+			switch i {
+			case 0:
+				log.destroy_console_logger(logger)
+			case 1:
+				log.destroy_file_logger(logger)
+			case:
+				log.destroy_multi_logger(logger)
+			}
+		}
+	}
+}
+
+choose_logger :: proc (loggers: [3]Maybe(log.Logger)) -> log.Logger {
+	if multi, ok := loggers[2].?; ok {
+		return multi
+	}
+	if console, ok := loggers[0].?; ok {
+		return console
+	}
+	return {}
 }
