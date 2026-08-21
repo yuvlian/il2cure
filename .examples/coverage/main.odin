@@ -115,7 +115,6 @@ mod_thread :: proc () {
 		if cfg.cov {
 			cov_core_runtime() // the game walk: find class+method, run every surface
 		}
-		hook.uninstall_all() // undo any inline hooks we installed
 	}
 
 	cov_pure_extra()       // formatting/helper package (names, accessors, modifiers)
@@ -124,7 +123,10 @@ mod_thread :: proc () {
 	cov_format()           // log.infof formatting a helper's return value directly
 	cov_frame()            // reflection-based field mapping (struct -> managed object)
 
-	extra.hang() // keep our thread alive forever
+	extra.exit_if_ctrl_c() // hold until ctrl+c
+	// ctrl+c pressed, clean up
+	hook.uninstall_all() // undo any inline hooks we installed
+	il2cpp.shutdown()    // free the class/method tables + api cache
 }
 
 cov_pure_only :: proc () {
@@ -154,24 +156,23 @@ cov_resolver :: proc () {
 		// obfuscated name, for example limbus would use this
 		// api index, for example HSR would use this
 		// and by default use normal api resolver which is GetProcAddress
-		il2cpp.api("il2cpp_class_from_name", il2cpp.Pattern(CLASS_FROM_NAME_SIG)) // pattern sig
-		il2cpp.api("il2cpp_class_get_name",  il2cpp.Obf_Name("PutRenamedExportHere")) // obfuscated
-		il2cpp.api("il2cpp_runtime_invoke",  il2cpp.Api_Index(17)) // by export index
-		if !il2cpp.init() { // init il2cpp with the seeded api resolvers
-			log.errorf("[coverage] il2cpp.init (pre-seed) failed") // oh nyooooooo
+		resolvers := make(map[string]il2cpp.Api_Resolver) // map of il2cpp api name to the resolver
+		defer delete(resolvers)
+
+		resolvers[il2cpp.IL2CPP_CLASS_FROM_NAME] = il2cpp.Pattern(CLASS_FROM_NAME_SIG)       // pattern sig
+		resolvers[il2cpp.IL2CPP_CLASS_GET_NAME]  = il2cpp.Obf_Name("PutRenamedExportHere")   // obfuscated
+		resolvers[il2cpp.IL2CPP_RUNTIME_INVOKE]  = il2cpp.Api_Index(17)                      // by export index
+
+		if !il2cpp.init_map(resolvers) {
+			log.errorf("[coverage] il2cpp.init_map failed") // oh nyooooooo
 		}
 	}
 
 	// skip_exports!
-	// if an export is broken and u want to prevent it from being loaded at all
-	// u can do this!
-	il2cpp.skip_exports(
-		"il2cpp_class_get_type",
-		"il2cpp_class_is_valuetype",
-		"you_can_put_more_args", // read the strings too!!
-		"its variadic!",
-		"so yeah!",
-	)
+	il2cpp.skip_exports([]string {
+		il2cpp.IL2CPP_CLASS_GET_TYPE,
+		il2cpp.IL2CPP_CLASS_IS_VALUETYPE,
+	})
 	assert(il2cpp.api("il2cpp_class_get_type") == nil, "skipped export must resolve nil") // skipped
 	assert(il2cpp.api("il2cpp_class_is_valuetype") == nil, "skipped export must resolve nil") // skipped
 }
@@ -309,8 +310,7 @@ cov_unity_surface :: proc () {
 
 	// object graph walkers (all safe on a 0 object).
 	_ = unity.get_class_of(0)                        // class handle of an object
-	_, _ = unity.find_method(0, "Nope")             // pull a method by name
-	_, _ = unity.invoke_named(0, "UnityEngine.GameObject", "get_transform") // invoke by name
+	_, _ = unity.invoke_named(0, "UnityEngine.GameObject", "get_transform") // invoke by name (cached find_method)
 	_, _ = unity.invoke(0, 0, 0, {})               // raw invoke with an arg ptr
 	_, _ = unity.read_value(0, f32)                // read a managed value as f32
 
@@ -503,6 +503,11 @@ cov_hook_surface :: proc (m: il2cpp.Il2CppMethod) {
 	// there are also other ways to unregister a hook and such. browse the source code~
 	tramp, orig := hook.hook_inline(m, rawptr(cov_detour), il2cpp.default_offsets()) // do the detour
 	_, _ = tramp, orig // trampoline + original bytes; we don't need them here
+
+	// hook_inline_address: bare native address (no Il2CppMethod), as a scan result would give.
+	addr := il2cpp.method_native_address_default(m) // raw uintptr native body
+	tramp_addr, aok := hook.hook_inline_address(addr, rawptr(cov_detour))
+	_, _ = tramp_addr, aok
 }
 
 // the detour target swapped in place of GetComponent above. it needs the

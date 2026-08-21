@@ -230,26 +230,16 @@ build_trampoline :: proc (orig: [^]byte, body: uintptr, captured: uint) -> rawpt
 	return tramp
 }
 
-// hook_inline patches the native code body with a jump to the detour and
-// overwrites methodPointer, intercepting both direct and dispatched calls.
-hook_inline :: proc {
-	hook_inline_raw,
-	hook_inline_default,
-}
-
-hook_inline_raw :: proc (
+// patches the native body at `body` with a jump to `detour`,
+// building a trampoline for the displaced prologue.
+// if `method != 0` it also overwrites MethodInfo->methodPointer
+@(private="file")
+install_region :: proc (
 	method:   il2cpp.Il2CppMethod,
+	body:     uintptr,
 	detour:   rawptr,
 	offsets:  il2cpp.Offsets,
 ) -> (trampoline: rawptr, original: rawptr) {
-	if method == 0 || detour == nil {
-		return nil, nil
-	}
-
-	body := il2cpp.method_native_address_raw(method, offsets)
-	if body == 0 {
-		return nil, nil
-	}
 	orig := cast([^]byte)(rawptr(body))
 
 	rel := int(uintptr(detour)) - int(body + 5)
@@ -258,9 +248,11 @@ hook_inline_raw :: proc (
 
 	if entry := find_inline(body); entry != nil {
 		patch_size := min(need, entry.captured)
-		original = write_method_ptr(method, detour)
-		if original == nil {
-			return nil, nil
+		if method != 0 {
+			original = write_method_ptr(method, detour)
+			if original == nil {
+				return nil, nil
+			}
 		}
 
 		if patch_size < need {
@@ -268,15 +260,19 @@ hook_inline_raw :: proc (
 		}
 
 		if !patch_body(body, patch_size, detour) {
-			write_method_ptr(method, original)
+			if method != 0 {
+				write_method_ptr(method, original)
+			}
 			return nil, nil
 		}
 		return entry.trampoline, original
 	}
 
-	original = write_method_ptr(method, detour)
-	if original == nil {
-		return nil, nil
+	if method != 0 {
+		original = write_method_ptr(method, detour)
+		if original == nil {
+			return nil, nil
+		}
 	}
 
 	captured: uint = 0
@@ -316,18 +312,41 @@ hook_inline_raw :: proc (
 		if e := find_inline(body); e != nil {
 			e.used = false
 		}
-		write_method_ptr(method, original)
+		if method != 0 {
+			write_method_ptr(method, original)
+		}
 		return nil, nil
 	}
 
 	return tramp, original
 }
 
-hook_inline_default :: proc (
-	method: il2cpp.Il2CppMethod,
-	detour: rawptr,
+hook_inline :: proc (
+	method:   il2cpp.Il2CppMethod,
+	detour:   rawptr,
+	offsets:  il2cpp.Offsets,
 ) -> (trampoline: rawptr, original: rawptr) {
-	return hook_inline_raw(method, detour, il2cpp.default_offsets())
+	if method == 0 || detour == nil {
+		return nil, nil
+	}
+
+	body := il2cpp.method_native_address_raw(method, offsets)
+	if body == 0 {
+		return nil, nil
+	}
+	return install_region(method, body, detour, offsets)
+}
+
+// inline hook at a bare native code address
+hook_inline_address :: proc (
+	body:   uintptr,
+	detour: rawptr,
+) -> (trampoline: rawptr, ok: bool) {
+	if body == 0 || detour == nil {
+		return nil, false
+	}
+	trampoline, _ = install_region(0, body, detour, il2cpp.default_offsets())
+	return trampoline, trampoline != nil
 }
 
 // hook_iat replaces a module's imported function thunk with the detour.

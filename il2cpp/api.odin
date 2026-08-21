@@ -114,7 +114,7 @@ api_cache: map[string]rawptr
 @(private="file")
 api_skip: map[string]bool
 
-skip_exports :: proc (names: ..string) {
+skip_exports :: proc (names: []string) {
 	for n in names {
 		api_skip[n] = true
 	}

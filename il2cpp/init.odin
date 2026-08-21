@@ -19,8 +19,8 @@ is_initialized :: proc () -> bool {
 
 // enumerates the il2cpp domain and builds the class/method tables.
 // returns false if the domain is unreachable (GameAssembly not loaded yet,
-// or domain_get failed)
-init :: proc (resolver := default_export_resolver) -> bool {
+// or domain_get failed). pass build_table=false to skip the eager domain walk
+init :: proc (resolver := default_export_resolver, build_table := true) -> bool {
 	if state != nil {
 		return true
 	}
@@ -38,54 +38,69 @@ init :: proc (resolver := default_export_resolver) -> bool {
 	table := new(Table)
 	table.allocator = context.allocator
 
-	count: uintptr
-	asms := vm_il2cpp_domain_get_assemblies(domain, &count)
+	if build_table {
+		count: uintptr
+		asms := vm_il2cpp_domain_get_assemblies(domain, &count)
 
-	table.assemblies = make([dynamic]Il2CppAssembly, 0, count)
-	for i: uintptr = 0; i < count; i += 1 {
-		asm_item := asms[i]
-		append(&table.assemblies, asm_item)
+		table.assemblies = make([dynamic]Il2CppAssembly, 0, count)
+		for i: uintptr = 0; i < count; i += 1 {
+			asm_item := asms[i]
+			append(&table.assemblies, asm_item)
 
-		image := vm_il2cpp_assembly_get_image(asm_item)
-		if image == 0 {
-			continue
-		}
-
-		n := vm_il2cpp_image_get_class_count(image)
-		for c: uintptr = 0; c < n; c += 1 {
-			class := vm_il2cpp_image_get_class(image, c)
-			if class == 0 {
+			image := vm_il2cpp_assembly_get_image(asm_item)
+			if image == 0 {
 				continue
 			}
 
-			cname := string(vm_il2cpp_class_get_name(class))
-			cns := string(vm_il2cpp_class_get_namespace(class))
-			full_name := build_full_name(cns, cname)
-
-			if _, ok := table.classes[full_name]; !ok {
-				table.classes[full_name] = class
-			}
-
-			iter: rawptr
-			for {
-				method := vm_il2cpp_class_get_methods(class, &iter)
-				if method == 0 {
-					break
+			n := vm_il2cpp_image_get_class_count(image)
+			for c: uintptr = 0; c < n; c += 1 {
+				class := vm_il2cpp_image_get_class(image, c)
+				if class == 0 {
+					continue
 				}
-				mname := string(vm_il2cpp_method_get_name(method))
-				method_key := strings.concatenate({full_name, "::", mname})
-				if _, ok := table.methods[method_key]; !ok {
-					table.methods[method_key] = method
-				}
-				delete(method_key)
-			}
 
-			delete(full_name)
+				cname := string(vm_il2cpp_class_get_name(class))
+				cns := string(vm_il2cpp_class_get_namespace(class))
+				full_name := build_full_name(cns, cname)
+
+				if _, ok := table.classes[full_name]; !ok {
+					table.classes[full_name] = class
+				}
+
+				iter: rawptr
+				for {
+					method := vm_il2cpp_class_get_methods(class, &iter)
+					if method == 0 {
+						break
+					}
+					mname := string(vm_il2cpp_method_get_name(method))
+					method_key := strings.concatenate({full_name, "::", mname})
+					if _, ok := table.methods[method_key]; !ok {
+						table.methods[method_key] = method
+					}
+					delete(method_key)
+				}
+
+				delete(full_name)
+			}
 		}
 	}
 
 	state = table
 	return true
+}
+
+// same as init, but seeds per-export resolvers from a map first.
+// pass build_table=false to skip the eager domain table
+init_map :: proc (
+	resolve_map:   map[string]Api_Resolver,
+	resolver:      Resolver_Proc = default_export_resolver,
+	build_table:   bool = true,
+) -> bool {
+	for name, r in resolve_map {
+		api(name, r)
+	}
+	return init(resolver, build_table)
 }
 
 // "Namespace.Type"
