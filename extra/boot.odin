@@ -61,7 +61,7 @@ exit_if_ctrl_c :: proc () {
 			time.sleep(time.Hour)
 		}
 	}
-	defer windows.SetConsoleCtrlHandler(ctrl_c_handlerw, false)
+	defer windows.SetConsoleCtrlHandler(ctrl_c_handler, false)
 
 	windows.WaitForSingleObject(evt, windows.INFINITE)
 }
