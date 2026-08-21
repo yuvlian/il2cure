@@ -51,6 +51,9 @@ cov_config_load :: proc (path: string, d := cov_defaults) -> Config {
 // this is just to showcase resolver, as you will see later!
 USE_DISPATCHER :: false
 
+// showcase build_table=false in init
+USE_BUILD_TABLE :: false
+
 // main is the DLL entry point
 // attach -> spawn thread and forget
 main :: proc () {
@@ -94,7 +97,7 @@ mod_thread :: proc () {
 	cov_resolver() // init il2cpp (several ways, see below)
 
 	// check if il2cpp is initialized just to be safe...
-	if il2cpp.is_initialized() {
+	if il2cpp.is_initialized() && USE_BUILD_TABLE {
 		classes, methods := il2cpp.map_stats() // how much il2cpp we can see
 		log.infof("[coverage] bridge up: %d classes, %d methods", classes, methods) // confirm bridge
 		if cfg.cov {
@@ -148,7 +151,7 @@ cov_resolver :: proc () {
 		resolvers[il2cpp.IL2CPP_CLASS_GET_NAME]  = il2cpp.Obf_Name("PutRenamedExportHere")   // obfuscated
 		resolvers[il2cpp.IL2CPP_RUNTIME_INVOKE]  = il2cpp.Api_Index(17)                      // by export index
 
-		if !il2cpp.init_map(resolvers) {
+		if !il2cpp.init_map(resolvers, build_table = USE_BUILD_TABLE) {
 			log.errorf("[coverage] il2cpp.init_map failed") // oh nyooooooo
 		}
 	}

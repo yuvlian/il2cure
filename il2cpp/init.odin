@@ -28,17 +28,18 @@ init :: proc (resolver := default_export_resolver, build_table := true) -> bool 
 	// install the strategy before the first binding resolves
 	active_resolver = resolver
 
-	domain := vm_il2cpp_domain_get()
-	if domain == 0 {
-		return false
-	}
-
-	vm_il2cpp_thread_attach(domain)
-
 	table := new(Table)
 	table.allocator = context.allocator
 
 	if build_table {
+		domain := vm_il2cpp_domain_get()
+		if domain == 0 {
+			free(table)
+			return false
+		}
+
+		vm_il2cpp_thread_attach(domain)
+
 		count: uintptr
 		asms := vm_il2cpp_domain_get_assemblies(domain, &count)
 
@@ -91,7 +92,7 @@ init :: proc (resolver := default_export_resolver, build_table := true) -> bool 
 }
 
 // same as init, but seeds per-export resolvers from a map first.
-// pass build_table=false to skip the eager domain table
+// pass build_table=false to skip the eager domain walk
 init_map :: proc (
 	resolve_map:   map[string]Api_Resolver,
 	resolver:      Resolver_Proc = default_export_resolver,
