@@ -218,6 +218,7 @@ IL2CPP_TYPE_GET_ASSEMBLY_QUALIFIED_NAME              :: "il2cpp_type_get_assembl
 IL2CPP_TYPE_GET_ATTRS                                :: "il2cpp_type_get_attrs"
 IL2CPP_TYPE_GET_CLASS_OR_ELEMENT_CLASS               :: "il2cpp_type_get_class_or_element_class"
 IL2CPP_TYPE_GET_NAME                                 :: "il2cpp_type_get_name"
+IL2CPP_TYPE_GET_NAME_CHUNKED                         :: "il2cpp_type_get_name_chunked"
 IL2CPP_TYPE_GET_OBJECT                               :: "il2cpp_type_get_object"
 IL2CPP_TYPE_GET_REFLECTION_NAME                      :: "il2cpp_type_get_reflection_name"
 IL2CPP_TYPE_GET_TYPE                                 :: "il2cpp_type_get_type"
