@@ -1221,8 +1221,8 @@ vm_il2cpp_type_get_object :: proc (t: Il2CppType) -> Il2CppObject {
 	return resolve(proc "c" (Il2CppType) -> Il2CppObject, IL2CPP_TYPE_GET_OBJECT)(t)
 }
 
-vm_il2cpp_type_get_type :: proc (t: Il2CppType) -> Cor_Element_Type {
-	return resolve(proc "c" (Il2CppType) -> Cor_Element_Type, IL2CPP_TYPE_GET_TYPE)(t)
+vm_il2cpp_type_get_type :: proc (t: Il2CppType) -> i32 {
+	return resolve(proc "c" (Il2CppType) -> i32, IL2CPP_TYPE_GET_TYPE)(t)
 }
 
 vm_il2cpp_type_get_class_or_element_class :: proc (t: Il2CppType) -> Il2CppClass {
