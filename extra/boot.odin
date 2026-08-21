@@ -4,20 +4,22 @@ import "core:sys/windows"
 import "core:time"
 import "../scan"
 
+GAME_ASSEMBLY_DLL :: "GameAssembly.dll"
+
 spin_until_module :: proc (
 	name: cstring16,
 	sleep: time.Duration = 10 * time.Millisecond,
-) {
+) -> scan.Module_Info {
 	for {
-		if _, ok := scan.module_info_from_name(name); ok {
-			break
+		if i, ok := scan.module_info_from_name(name); ok {
+			return i
 		}
 		time.sleep(sleep)
 	}
 }
 
-spin_until_ga_load :: proc (sleep: time.Duration = 10 * time.Millisecond) {
-	spin_until_module("GameAssembly.dll", sleep)
+spin_until_ga_load :: proc (sleep: time.Duration = 10 * time.Millisecond) -> scan.Module_Info {
+	return spin_until_module(GAME_ASSEMBLY_DLL, sleep)
 }
 
 hang :: proc () {

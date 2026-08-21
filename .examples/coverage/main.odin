@@ -81,9 +81,11 @@ mod_thread :: proc () {
 	cfg := cov_config_load("coverage.json") // load config (defaults if missing)
 
 	if cfg.wait_ga {
-		extra.spin_until_ga_load(cfg.poll) // poll until gameassembly.dll is mapped in
-	} else if _, ok := scan.module_info_from_name("GameAssembly.dll"); !ok { // GA not loaded?
-		log.warnf("[coverage] GameAssembly.dll not mapped, skipping game walk") // warn, don't crash
+		// poll until gameassembly.dll is mapped in, grab its Module_Info
+		ga := extra.spin_until_ga_load(cfg.poll)
+		log.infof("[coverage] %s mapped: base 0x%p size 0x%x", extra.GAME_ASSEMBLY_DLL, ga.base, ga.size)
+	} else if _, ok := scan.module_info_from_name(extra.GAME_ASSEMBLY_DLL); !ok { // GA not loaded?
+		log.warnf("[coverage] %s not mapped, skipping game walk", extra.GAME_ASSEMBLY_DLL) // warn, don't crash
 		cov_pure_only()            // this just prints~
 		extra.hang()               // keeps our dll thread alive so it doesn't just close
 		return // exit since we dont have gameassembly to proceed with rest...
