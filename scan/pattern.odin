@@ -107,7 +107,7 @@ find_pattern_in_module :: proc (
 
 			return true
 		},
-		&state
+		&state,
 	)
 
 	return state.found, state.found != 0

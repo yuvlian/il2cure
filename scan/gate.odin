@@ -128,11 +128,11 @@ find_gate_jz :: proc(body: [^]u8, len: uint, field_off: u32) -> (jz_off: uint, o
 // find_mov_imm32 scans body[start..len) for a `mov r32, imm32` (opcode
 // B8..BF) whose 32-bit immediate equals imm.
 // returns the offset of the immediate's first byte.
-find_mov_imm32 :: proc(
-	body: [^]u8,
-	len: uint,
+find_mov_imm32 :: proc (
+	body:  [^]u8,
+	len:   uint,
 	start: uint,
-	imm: u32
+	imm:   u32,
 ) -> (imm_off: uint, ok: bool) {
 	if body == nil || len < 5 || start >= len {
 		return 0, false

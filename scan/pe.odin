@@ -119,7 +119,7 @@ all_sections :: proc (
 		rva:          uintptr,
 		virtual_size: uintptr,
 		section:      IMAGE_SECTION_HEADER,
-		user:         rawptr
+		user:         rawptr,
 	) -> bool,
 	user:  rawptr = nil,
 ) -> bool {
