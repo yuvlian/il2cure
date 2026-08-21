@@ -66,18 +66,51 @@ find_pattern_in_buffer :: proc (
 	return 0, false
 }
 
+// find_pattern_in_module scans every executable section of the module
+// (.text, and game-specific ones like HSR's "il2cpp"/".upx0") for `pattern`.
+// returns the matching VA, or 0/false.
 find_pattern_in_module :: proc (
-	module:       Module_Info,
-	pattern:      []u16,
-	section_name: [4]byte = {'.', 't', 'e', 'x'},
+	module:  Module_Info,
+	pattern: []u16,
 ) -> (uintptr, bool) {
-	start, size, ok := module_section(module, section_name)
-	if !ok {
-		return 0, false
-	}
+	state := struct {
+		module:  Module_Info,
+		pattern: []u16,
+		found:   uintptr,
+	}{module, pattern, 0}
 
-	slice := (cast([^]byte)(module.base + start))[:size]
-	return find_pattern_in_buffer(slice, pattern, module.base + start)
+	all_sections(
+		module,
+		proc (
+			rva:          uintptr,
+			virtual_size: uintptr,
+			sec:          IMAGE_SECTION_HEADER,
+			user:         rawptr,
+		) -> bool {
+			st := cast(^struct {
+				module:  Module_Info,
+				pattern: []u16,
+				found:   uintptr,
+			})user
+
+			if sec.characteristics & IMAGE_SCN_MEM_EXECUTE == 0 {
+				return true
+			}
+
+			slice := (cast([^]byte)(st.module.base + rva))[:virtual_size]
+
+			if addr, ok := find_pattern_in_buffer(slice,
+				st.pattern, st.module.base + rva); ok {
+				st.found = addr
+				return false
+			}
+
+			return true
+		},
+		&state
+	)
+
+	return state.found, state.found != 0
 }
 
 resolve_call_rel32 :: proc (addr: uintptr) -> uintptr {

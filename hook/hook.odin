@@ -1,5 +1,6 @@
 package hook
 
+import "core:strings"
 import "core:sys/windows"
 
 import "../il2cpp"
@@ -365,7 +366,7 @@ hook_iat :: proc (
 	desc := ([^]scan.IMAGE_IMPORT_DESCRIPTOR)(module.base + import_rva)
 	for d := 0; desc[d].name != 0; d += 1 {
 		mod_name := cstring(rawptr(module.base + uintptr(desc[d].name)))
-		if string(mod_name) != import_module {
+		if !strings.equal_fold(string(mod_name), import_module) {
 			continue
 		}
 
@@ -385,7 +386,7 @@ hook_iat :: proc (
 				)
 				ibn_name := cstring(rawptr(uintptr(ibn) + 2))
 
-				if string(ibn_name) == func_name {
+				if strings.equal_fold(string(ibn_name), func_name) {
 					original = rawptr(thunk[t].u1.function)
 
 					old_prot: windows.DWORD

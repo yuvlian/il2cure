@@ -552,7 +552,7 @@ cov_pure_scan :: proc () {
 	// pattern/resolve helpers are pure on a mapped module.
 	_, _ = scan.find_pattern_in_module(sc, CLASS_FROM_NAME_SIG) // scan the module for our sig
 	// grab the .text section's rva + virtual size, so u know where to scan
-	rva, vsz, sok := scan.module_section(sc, [4]byte{'.', 't', 'e', 'x'}) // .text section
+	rva, vsz, sok := scan.module_section(sc, ".text") // .text section
 	_, _, _ = rva, vsz, sok
 	_ = scan.module_import_dir(sc) // import directory rva
 	// address resolvers: turn a `call rel32`/`lea rip+X`/`mov rax,[rip+X]`
